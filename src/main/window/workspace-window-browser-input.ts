@@ -1,7 +1,10 @@
 import type { WebContents } from 'electron'
 import { acquireElectronDebugger } from '../browser/electron-debugger-lease'
 import { resolveKeyDefinition } from '../browser/cdp-text-input-commands'
-import { cdpMouseButtonMask, normalizeCdpMouseButton } from '../browser/agent-browser-bridge-mouse'
+import {
+  cdpPointerButtonMask,
+  normalizeCdpMouseButton
+} from '../browser/agent-browser-bridge-mouse'
 import { Keypress, MouseXY, MouseButton, MouseWheel } from '../runtime/rpc/methods/browser-schemas'
 
 const positions = new WeakMap<
@@ -72,8 +75,8 @@ export async function dispatchWorkspaceWindowBrowserInput(
       position = {
         ...position,
         buttons: pressed
-          ? position.buttons | cdpMouseButtonMask(button)
-          : position.buttons & ~cdpMouseButtonMask(button)
+          ? position.buttons | cdpPointerButtonMask(button)
+          : position.buttons & ~cdpPointerButtonMask(button)
       }
       senderPositions.set(guest, position)
       await guest.debugger.sendCommand('Input.dispatchMouseEvent', {

@@ -1,7 +1,13 @@
 import { z } from 'zod'
-import { isStreamingMethod, type RpcAnyMethod, type RpcContext } from '../core'
+import type { RpcAnyMethodDeclaration, RpcContext } from '../core'
 
-export function sessionWindowMethods(methods: readonly RpcAnyMethod[]): RpcAnyMethod[] {
+export type SessionWindowMethodDeclaration = RpcAnyMethodDeclaration & {
+  readonly name: `session.window.tabs.${string}`
+}
+
+export function sessionWindowMethods(
+  methods: readonly RpcAnyMethodDeclaration[]
+): SessionWindowMethodDeclaration[] {
   return methods
     .filter(
       (method) =>
@@ -30,24 +36,33 @@ export function sessionWindowMethods(methods: readonly RpcAnyMethod[]): RpcAnyMe
         }
       }
       const name = method.name.replace('session.tabs.', 'session.window.tabs.')
-      if (isStreamingMethod(method)) {
+      const handler = method.handler as unknown as (
+        params: unknown,
+        context: RpcContext,
+        emit?: (result: unknown) => void
+      ) => unknown
+      if ('stream' in method && method.stream === true) {
         return {
           name,
           params,
           stream: true as const,
-          handler: async (value, context, emit) => {
+          handler: async (value: never, context, emit) => {
             const args = params.parse(value)
-            return method.handler(args.params, scopedContext(context, args.windowId), emit)
+            return handler(
+              args.params,
+              scopedContext(context, args.windowId),
+              emit
+            ) as Promise<void>
           }
-        }
+        } as SessionWindowMethodDeclaration
       }
       return {
         name,
         params,
-        handler: (value, context) => {
+        handler: (value: never, context) => {
           const args = params.parse(value)
-          return method.handler(args.params, scopedContext(context, args.windowId))
+          return handler(args.params, scopedContext(context, args.windowId))
         }
-      }
+      } as SessionWindowMethodDeclaration
     })
 }

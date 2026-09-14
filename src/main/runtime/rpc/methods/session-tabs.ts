@@ -1,5 +1,5 @@
 import { resolveRuntimeNavigationTarget } from '../../../../shared/runtime-navigation'
-import { defineMethod, defineStreamingMethod } from '../core'
+import { defineMethod, defineStreamingMethod, type RpcAnyMethod } from '../core'
 import {
   CreateTerminalTab,
   SessionTabsUnsubscribe,
@@ -20,7 +20,7 @@ import { assertLegacyAiVaultResumeCommandAllowed } from '../../../ai-vault/struc
 import { sessionWindowMethods } from './session-window-methods'
 import { SessionTabsUnsubscribeAllParams } from '../../../../shared/rpc-contract/session-tabs-params'
 
-export const SESSION_TAB_METHODS = [
+const SESSION_TAB_METHOD_DECLARATIONS = [
   defineMethod({
     name: 'session.tabs.list',
     params: WorktreeTabSelector,
@@ -227,4 +227,10 @@ export const SESSION_TAB_METHODS = [
   ...SESSION_TAB_MARKDOWN_METHODS
 ]
 
-SESSION_TAB_METHODS.push(...sessionWindowMethods(SESSION_TAB_METHODS))
+export const SESSION_TAB_METHOD_DECLARATIONS_WITH_WINDOWS = [
+  ...SESSION_TAB_METHOD_DECLARATIONS,
+  ...sessionWindowMethods(SESSION_TAB_METHOD_DECLARATIONS)
+]
+// The test-facing export keeps erased handlers so callers can inspect and invoke generated window methods.
+export const SESSION_TAB_METHODS =
+  SESSION_TAB_METHOD_DECLARATIONS_WITH_WINDOWS as unknown as RpcAnyMethod[]

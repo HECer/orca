@@ -1,4 +1,3 @@
-import type { ElectronAPI } from '@electron-toolkit/preload'
 import type { WorkspaceViewBridge } from '../shared/workspace-view-bridge'
 import type {
   ClaudeAccountsApi,
@@ -208,7 +207,6 @@ declare global {
   interface Window {
     orcaWorkspaceWindowNative?: WorkspaceWindowNativeBridge
     orcaWorkspaceViews?: WorkspaceViewBridge
-    electron: ElectronAPI
     api: PreloadApi
   }
 }

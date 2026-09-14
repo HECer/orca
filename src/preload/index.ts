@@ -1,6 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { exposeWorkspaceViewBridge } from './workspace-view-bridge'
-import { electronAPI } from '@electron-toolkit/preload'
 import type { PreloadApi } from './api-types'
 import {
   installBrowserFindListener,
@@ -188,12 +187,10 @@ const api = {
 
 if (process.contextIsolated) {
   try {
-    contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('api', api)
   } catch (error) {
     console.error(error)
   }
 } else {
-  window.electron = electronAPI
   window.api = api
 }
