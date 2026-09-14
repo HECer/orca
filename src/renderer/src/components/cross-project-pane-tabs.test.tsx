@@ -113,7 +113,8 @@ describe('cross-project pane tabs', () => {
       ],
       activeWorktreeId: 'alpha',
       activeTabType: 'terminal',
-      activeTabId: terminal.entityId
+      activeTabId: terminal.entityId,
+      rightSidebarOpen: false
     })
     renderHook(useWindowPaneNavigation)
     render(
@@ -126,6 +127,7 @@ describe('cross-project pane tabs', () => {
       </TooltipProvider>
     )
     expect(document.querySelectorAll('[data-tab-group-strip-id]')).toHaveLength(1)
+    expect(document.querySelector('[data-window-controls-inset="true"]')).toBeTruthy()
     const terminalElement = screen.getByTestId(`terminal-${terminal.entityId}`)
     const identity = terminalElement.dataset.identity
     act(() => {
@@ -142,6 +144,7 @@ describe('cross-project pane tabs', () => {
     fireEvent.change(input, { target: { value: 'unsaved across split' } })
     fireEvent.click(screen.getByRole('button', { name: 'Split Right' }))
     expect(document.querySelectorAll('[data-tab-group-strip-id]')).toHaveLength(2)
+    expect(document.querySelectorAll('[data-window-controls-inset="true"]')).toHaveLength(1)
     expect(terminalElement.dataset.visible).toBe('true')
     fireEvent.click(screen.getAllByRole('button', { name: 'Expand Pane' })[1])
     fireEvent.click(screen.getByRole('button', { name: 'Restore Layout' }))

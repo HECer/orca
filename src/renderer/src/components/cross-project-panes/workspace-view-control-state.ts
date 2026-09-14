@@ -101,17 +101,17 @@ export function isWorkspaceViewController(view: WorkspaceView): boolean {
         view.id
 }
 
-export async function takeWorkspaceViewControl(view: WorkspaceView): Promise<void> {
+export async function takeWorkspaceViewControl(view: WorkspaceView): Promise<boolean> {
   const key = keys.get(view.id)
   if (key && window.orcaWorkspaceViews) {
-    await window.orcaWorkspaceViews.claim(key, view.id)
-  } else {
-    localControllers.set(
-      JSON.stringify([view.executionHostId, view.worktreeId, view.contentType, view.entityId]),
-      view.id
-    )
-    notify()
+    return window.orcaWorkspaceViews.claim(key, view.id)
   }
+  localControllers.set(
+    JSON.stringify([view.executionHostId, view.worktreeId, view.contentType, view.entityId]),
+    view.id
+  )
+  notify()
+  return true
 }
 
 function canControlWorkspacePty(ptyId: string | null): boolean {

@@ -175,7 +175,11 @@ export function SplitNode({
   suppressBottomBorder: boolean
   isTabDragActive: boolean
   hoveredTabInsertion: HoveredTabInsertion | null
-  renderPane?: (paneId: string, reserveCollapsedSidebarHeaderSpace: boolean) => React.ReactNode
+  renderPane?: (
+    paneId: string,
+    reserveCollapsedSidebarHeaderSpace: boolean,
+    touchesTopRightEdge: boolean
+  ) => React.ReactNode
   onSplitRatioChange?: (path: string, ratio: number) => void
 }): React.JSX.Element {
   const setTabGroupSplitRatio = useAppStore((state) => state.setTabGroupSplitRatio)
@@ -183,7 +187,15 @@ export function SplitNode({
 
   if (node.type === 'leaf') {
     if (renderPane) {
-      return <>{renderPane(node.groupId, touchesTopEdge && touchesLeftEdge)}</>
+      return (
+        <>
+          {renderPane(
+            node.groupId,
+            touchesTopEdge && touchesLeftEdge,
+            touchesTopEdge && touchesRightEdge
+          )}
+        </>
+      )
     }
     return (
       <TabGroupPanel

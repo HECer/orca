@@ -13,6 +13,7 @@ export function CrossProjectPaneLayout(): React.JSX.Element | null {
   const { overlay, ...drag } = useWorkspacePaneDrag()
   const layout = useAppStore((s) => s.windowPaneLayout)
   const sidebarOpen = useAppStore((s) => s.sidebarOpen)
+  const rightSidebarOpen = useAppStore((s) => s.rightSidebarOpen)
   useAppStore((s) => s.unifiedTabsByWorktree)
   if (!layout) {
     return null
@@ -42,9 +43,10 @@ export function CrossProjectPaneLayout(): React.JSX.Element | null {
           isTabDragActive={false}
           hoveredTabInsertion={null}
           onSplitRatioChange={useAppStore.getState().setWindowPaneRatio}
-          renderPane={(id, reserveCollapsedSidebarHeaderSpace) => {
+          renderPane={(id, reserveCollapsedSidebarHeaderSpace, touchesTopRightEdge) => {
             const pane = layout.panes[id]
             const focused = id === layout.activePaneId
+            const reserveWindowControls = touchesTopRightEdge && !rightSidebarOpen
             const focus = () => useAppStore.getState().focusWindowPane(id)
             return (
               <section
@@ -59,6 +61,7 @@ export function CrossProjectPaneLayout(): React.JSX.Element | null {
                 <div
                   className={`flex h-[32px] shrink-0 items-stretch rounded-t-lg border-b ${focused && layout.root.type === 'split' ? 'border-ring' : 'border-border'} bg-card`}
                   data-tab-group-strip-id={id}
+                  data-window-controls-inset={reserveWindowControls ? 'true' : undefined}
                 >
                   {reserveCollapsedSidebarHeaderSpace && !sidebarOpen && (
                     <div

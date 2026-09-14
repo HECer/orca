@@ -945,6 +945,13 @@ html.native-shell .app-layout {
   width: var(--window-controls-width, 0px);
 }
 
+/* Why: cross-project panes own their tab/action strip at the very top of the
+   window. Keep the rightmost strip's actions outside the fixed Windows/Linux
+   controls overlay while leaving the pane body at its full width. */
+[data-window-controls-inset='true'] {
+  padding-right: var(--window-controls-width, 0px);
+}
+
 .right-sidebar-header-drag {
   -webkit-app-region: drag;
   user-select: none;
