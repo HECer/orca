@@ -1,4 +1,5 @@
-import { shell, dialog } from 'electron'
+import { validatePathExistenceBatch } from '../../shared/path-existence-batch'
+import { ipcMain, shell, dialog } from 'electron'
 import {
   createWorkspaceWindowShellScope,
   registerWorkspaceWindowShellHandler as handle
@@ -225,6 +226,11 @@ export function registerShellHandlers(
     }
 
     await openWithSystemDefault(target.path)
+  })
+
+  ipcMain.handle('shell:pathsExist', async (_event, paths: string[]): Promise<boolean[]> => {
+    validatePathExistenceBatch(paths)
+    return Promise.all(paths.map(pathExists))
   })
 
   handle(

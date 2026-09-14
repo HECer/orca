@@ -210,6 +210,7 @@ export const ELECTRON_REMOTE_RUNTIME_CLIENT_CAPABILITIES = [
 
 export const RUNTIME_CAPABILITIES = [
   SESSION_WINDOW_NAVIGATION_CAPABILITY,
+  'files.pathsExist',
   'runtime.status.compat.v1',
   'runtime.environments.v1',
   REMOTE_RUNTIME_SHARED_CONTROL_CAPABILITY,

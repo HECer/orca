@@ -45,6 +45,11 @@ export function createShellBridge(prefix = 'shell'): PreloadApi['shell'] {
     openFileUri: (uri: string, scope?: ShellPathScope): Promise<void> =>
       ipcRenderer.invoke(`${prefix}:openFileUri`, uri, scope),
 
+    pathsExist:
+      prefix === 'shell'
+        ? (paths: string[]): Promise<boolean[]> => ipcRenderer.invoke('shell:pathsExist', paths)
+        : undefined,
+
     pathExists: (path: string, scope?: ShellPathScope): Promise<boolean> =>
       ipcRenderer.invoke(`${prefix}:pathExists`, path, scope),
 

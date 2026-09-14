@@ -1,3 +1,4 @@
+import { ipcMain } from 'electron'
 import { registerWorkspaceWindowRuntimeHandler } from '../window/workspace-window-runtime-routing'
 import {
   addEnvironmentFromPairingCode,
@@ -20,16 +21,18 @@ import { verifyAndAddRuntimeEnvironmentFromPairingCode } from './runtime-environ
 import { clearRuntimeEnvironmentCapabilityEvidence } from './runtime-environment-capability-evidence'
 import {
   closeRemoteRuntimeRequestConnection,
+  getRuntimeEnvironmentStatusOwner,
+  getRuntimeEnvironmentStatusSnapshots,
   retryRemoteRuntimeSharedControlConnectionNow
 } from './runtime-environment-request-connections'
 import {
   clearRuntimeEnvironmentManualDisconnect,
   isRuntimeEnvironmentManuallyDisconnected,
-  markRuntimeEnvironmentManuallyDisconnected
+  markRuntimeEnvironmentManuallyDisconnected,
+  RUNTIME_MANUALLY_DISCONNECTED_MESSAGE
 } from './runtime-environment-manual-disconnect'
 import {
   callRuntimeEnvironment,
-  clearSharedControlSupport,
   getRuntimeEnvironmentStatus
 } from './runtime-environment-transport-routing'
 
@@ -41,7 +44,7 @@ function manuallyDisconnectedResponse(
     ok: false,
     error: {
       code: 'runtime_manually_disconnected',
-      message: 'Runtime environment is manually disconnected.'
+      message: RUNTIME_MANUALLY_DISCONNECTED_MESSAGE
     },
     _meta: { runtimeId: environment.runtimeId }
   }
@@ -60,6 +63,9 @@ export function registerRuntimeEnvironmentConnectivityHandlers({
   getUserDataPath,
   invalidateTransport
 }: ConnectivityHandlerOptions): void {
+  ipcMain.handle('runtimeEnvironments:getStatusSnapshots', () =>
+    getRuntimeEnvironmentStatusSnapshots()
+  )
   registerWorkspaceWindowRuntimeHandler('runtimeEnvironments:list', () =>
     listEnvironments(getUserDataPath()).map(redactRuntimeEnvironment)
   )
@@ -80,6 +86,12 @@ export function registerRuntimeEnvironmentConnectivityHandlers({
       const result = await verifyAndAddRuntimeEnvironmentFromPairingCode(getUserDataPath(), args)
       if (result.ok) {
         clearRuntimeEnvironmentManualDisconnect(result.environment.id)
+        getRuntimeEnvironmentStatusOwner(getUserDataPath(), result.environment.id).acceptVerified({
+          id: 'status.get',
+          ok: true,
+          result: result.runtimeStatus,
+          _meta: { runtimeId: result.runtimeStatus.runtimeId }
+        })
       }
       return result
     }
@@ -123,6 +135,8 @@ export function registerRuntimeEnvironmentConnectivityHandlers({
       markRuntimeEnvironmentManuallyDisconnected(environment.id)
       invalidateTransport(environment.id)
       closeLegacySelectorTransport(args.selector, environment.id)
+      // Retain disconnected evidence for renderers that missed the teardown event.
+      getRuntimeEnvironmentStatusOwner(getUserDataPath(), environment.id)
       return { disconnected: redactRuntimeEnvironment(environment) }
     }
   )
@@ -134,7 +148,9 @@ export function registerRuntimeEnvironmentConnectivityHandlers({
     ): Promise<RuntimeRpcResponse<RuntimeStatus>> => {
       const environment = resolveEnvironment(getUserDataPath(), args.selector)
       clearRuntimeEnvironmentManualDisconnect(environment.id)
-      return getRuntimeEnvironmentStatus(getUserDataPath(), environment.id, args.timeoutMs)
+      return getRuntimeEnvironmentStatus(getUserDataPath(), environment.id, args.timeoutMs, {
+        reconnect: true
+      })
     }
   )
   registerWorkspaceWindowRuntimeHandler(
@@ -158,7 +174,6 @@ function closeLegacySelectorTransport(selector: string, environmentId: string): 
     return
   }
   closeRemoteRuntimeRequestConnection(selector)
-  clearSharedControlSupport(selector)
 }
 
 function registerPassiveStatusHandler(getUserDataPath: () => string): void {
@@ -215,6 +230,7 @@ function registerPassiveCallHandler(getUserDataPath: () => string): void {
         params?: unknown
         timeoutMs?: number
         expectedEnvironmentPairingRevision?: number
+        expectedEnvironmentRuntimeId?: string
       }
     ): Promise<RuntimeRpcResponse<unknown>> => {
       const environment = resolveEnvironment(getUserDataPath(), args.selector)
@@ -229,7 +245,9 @@ function registerPassiveCallHandler(getUserDataPath: () => string): void {
           args.method,
           args.params,
           args.timeoutMs,
-          args.expectedEnvironmentPairingRevision
+          args.expectedEnvironmentPairingRevision,
+          undefined,
+          { expectedEnvironmentRuntimeId: args.expectedEnvironmentRuntimeId }
         )
       } catch (error) {
         const failure = runtimeEnvironmentCallFailure(environment, args.method, error)

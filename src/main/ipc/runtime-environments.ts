@@ -2,7 +2,7 @@ import { registerWorkspaceWindowRuntimeHandler } from '../window/workspace-windo
 import { authorizeWorkspaceWindowEvent } from '../window/workspace-window-native-bridge'
 import { app, ipcMain } from 'electron'
 import { randomUUID } from 'node:crypto'
-import { resolveEnvironment } from '../../shared/runtime-environment-store'
+import { listEnvironments, resolveEnvironment } from '../../shared/runtime-environment-store'
 import type { RemoteRuntimeSubscription } from '../../shared/remote-runtime-client'
 import type { Store } from '../persistence'
 import {
@@ -10,14 +10,16 @@ import {
   registerRuntimeEnvironmentConnectivityHandlers,
   registerRuntimeEnvironmentPassiveHandlers
 } from './runtime-environment-connectivity-handlers'
-import { closeRemoteRuntimeRequestConnection } from './runtime-environment-request-connections'
+import {
+  closeRemoteRuntimeRequestConnection,
+  getRuntimeEnvironmentStatusOwner
+} from './runtime-environment-request-connections'
 import { registerRuntimeEnvironmentRecoveryHandler } from './runtime-environment-recovery-handler'
 import {
   advanceRuntimeEnvironmentTransportGeneration,
   getRuntimeEnvironmentTransportGeneration
 } from './runtime-environment-transport-generation'
 import {
-  clearSharedControlSupport,
   resetSharedControlSupport,
   subscribeRuntimeEnvironment
 } from './runtime-environment-transport-routing'
@@ -66,7 +68,6 @@ export function invalidateRuntimeEnvironmentTransport(environmentId: string): Pr
   advanceRuntimeEnvironmentCapabilityIncarnation(environmentId)
   advanceRuntimeEnvironmentTransportGeneration(environmentId)
   closeRemoteRuntimeRequestConnection(environmentId)
-  clearSharedControlSupport(environmentId)
   closeSubscriptionsForEnvironment(environmentId)
   return retirePairedRuntimeBrowserClientHostEnvironment(
     environmentId,
@@ -101,6 +102,11 @@ export function registerRuntimeEnvironmentHandlers(store: Store): void {
   })
   registerRuntimeEnvironmentRecoveryHandler()
   registerRuntimeEnvironmentPassiveHandlers(getUserDataPath)
+  for (const environment of listEnvironments(getUserDataPath())) {
+    if (!isRuntimeEnvironmentManuallyDisconnected(environment.id)) {
+      getRuntimeEnvironmentStatusOwner(getUserDataPath(), environment.id).activate()
+    }
+  }
   registerWorkspaceWindowRuntimeHandler(
     'runtimeEnvironments:subscribe',
     async (
@@ -112,6 +118,7 @@ export function registerRuntimeEnvironmentHandlers(store: Store): void {
         timeoutMs?: number
         subscriptionId?: string
         expectedEnvironmentPairingRevision?: number
+        expectedEnvironmentRuntimeId?: string
       }
     ): Promise<{ subscriptionId: string; requestId: string }> => {
       const subscriptionId =
@@ -131,6 +138,12 @@ export function registerRuntimeEnvironmentHandlers(store: Store): void {
         pairingRevision !== args.expectedEnvironmentPairingRevision
       ) {
         throw new Error('Runtime environment pairing changed; refresh and try again')
+      }
+      if (
+        args.expectedEnvironmentRuntimeId !== undefined &&
+        environment.runtimeId !== args.expectedEnvironmentRuntimeId
+      ) {
+        throw new Error('Runtime environment identity changed; refresh and try again')
       }
       const transportGeneration = getRuntimeEnvironmentTransportGeneration(environment.id)
       const transportIsCurrent = (): boolean =>

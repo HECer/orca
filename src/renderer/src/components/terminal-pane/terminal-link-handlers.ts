@@ -1,4 +1,5 @@
 import type { IDisposable, ILink, ILinkProvider, Terminal } from '@xterm/xterm'
+import { createTerminalPathExistenceBatch } from './terminal-path-existence-batch'
 import { getWorkspaceShellApi } from '@/lib/workspace-shell-scope'
 import {
   extractTerminalFileLinkCandidates,
@@ -6,7 +7,7 @@ import {
   resolveTerminalFileLink
 } from '@/lib/terminal-links'
 import type { PaneManager } from '@/lib/pane-manager/pane-manager'
-import { isRemoteRuntimeFileOperation, runtimePathExists } from '@/runtime/runtime-file-client'
+import { isRemoteRuntimeFileOperation } from '@/runtime/runtime-file-client'
 import {
   buildCandidateLogicalLinesForBufferPosition,
   dedupeLogicalLines,
@@ -103,6 +104,7 @@ export function createFilePathLinkProvider(
   openLinkHint: string
 ): ILinkProvider {
   const { startupCwd, managerRef, pathExistsCache, worktreeId, worktreePath } = deps
+  const pathExistsBatch = createTerminalPathExistenceBatch()
   return {
     provideLinks: (bufferLineNumber, callback) => {
       const pane = managerRef.current?.getPanes().find((candidate) => candidate.id === paneId)
@@ -174,11 +176,13 @@ export function createFilePathLinkProvider(
                 const cachedExists = readTerminalPathExistsCache(pathExistsCache, cacheKey)
                 const exists =
                   cachedExists ??
-                  (fileContext.connectionId || isRemoteRuntimePath
-                    ? await runtimePathExists(fileContext, mappedPath)
-                    : await getWorkspaceShellApi({ worktreeId, runtimeEnvironmentId }).pathExists(
+                  (window.orcaWorkspaceWindowNative &&
+                  !fileContext.connectionId &&
+                  !isRemoteRuntimePath
+                    ? await getWorkspaceShellApi({ worktreeId, runtimeEnvironmentId }).pathExists(
                         mappedPath
-                      ))
+                      )
+                    : await pathExistsBatch(fileContext, mappedPath, isRemoteRuntimePath))
                 writeTerminalPathExistsCache(pathExistsCache, cacheKey, exists)
                 if (!exists) {
                   return null

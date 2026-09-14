@@ -1,5 +1,9 @@
 import type { IpcRenderer } from 'electron'
 import type { RUNTIME_ENVIRONMENT_DIAGNOSTICS_CHANNEL as DiagnosticsChannel } from '../../shared/runtime-environment-diagnostics'
+import {
+  RUNTIME_HOST_STATUS_CHANNEL,
+  type RuntimeHostStatusSnapshot
+} from '../../shared/runtime-host-status'
 const { ipcRenderer } = require('electron') as { ipcRenderer: IpcRenderer }
 import type { VerifyAndAddRuntimeEnvironmentResult } from '../../shared/remote-pairing-verification'
 import type { RuntimeStatus } from '../../shared/runtime-types'
@@ -20,6 +24,16 @@ export function createRuntimeEnvironmentsBridge(
   ipc: Pick<typeof ipcRenderer, 'invoke' | 'on' | 'removeListener' | 'send'> = ipcRenderer
 ) {
   return {
+    getStatusSnapshots: (): Promise<RuntimeHostStatusSnapshot[]> =>
+      ipc.invoke('runtimeEnvironments:getStatusSnapshots'),
+    onStatusChanged: (callback: (snapshot: RuntimeHostStatusSnapshot) => void): (() => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        snapshot: RuntimeHostStatusSnapshot
+      ): void => callback(snapshot)
+      ipc.on(RUNTIME_HOST_STATUS_CHANNEL, listener)
+      return () => ipc.removeListener(RUNTIME_HOST_STATUS_CHANNEL, listener)
+    },
     list: (): Promise<PublicKnownRuntimeEnvironment[]> => ipc.invoke('runtimeEnvironments:list'),
     addFromPairingCode: (args: {
       name: string

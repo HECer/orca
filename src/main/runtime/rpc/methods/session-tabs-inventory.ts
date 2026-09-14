@@ -4,6 +4,7 @@ import type { RuntimeMobileSessionTabsResult } from '../../../../shared/runtime-
 import type { RpcContext } from '../core'
 import { projectSessionTabAgentStatus } from './session-tab-agent-status-projection'
 import { projectSessionTabBrowserPlacements } from './session-tab-browser-placement-projection'
+import { createSessionTabsRetirementProofDelta } from './session-tabs-retirement-proof-delta'
 import { isStructuredNativeChatEnabled } from './structured-agent-session-policy'
 
 type SessionTabsInventory = {
@@ -124,6 +125,7 @@ export async function subscribeSessionTabsInventory(
   const deliveredChangeSequenceByWorktree = new Map<string, number>()
   let censusChangeSequence: number | undefined
   let censusInvalidated = false
+  const withProofDelta = createSessionTabsRetirementProofDelta(context.clientCapabilities)
   const projectChange = (snapshot: SessionTabsChange): SessionTabsChange =>
     projectSessionTabsForClient(
       snapshot,
@@ -200,7 +202,7 @@ export async function subscribeSessionTabsInventory(
     }
     emit({
       type: 'updated',
-      ...projected
+      ...withProofDelta(projected)
     })
     if (projected.removed === true) {
       publishedSnapshotsByWorktree.delete(snapshot.worktree)
@@ -274,7 +276,7 @@ export async function subscribeSessionTabsInventory(
   }
   const { inventory, changeSequence } = collected
   censusChangeSequence = changeSequence
-  emit({ type: 'snapshots', ...inventory })
+  emit({ type: 'snapshots', ...inventory, snapshots: inventory.snapshots.map(withProofDelta) })
   for (const snapshot of inventory.snapshots) {
     publishedSnapshotsByWorktree.set(snapshot.worktree, withoutNavigationIntent(snapshot))
   }
