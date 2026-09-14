@@ -167,8 +167,15 @@ export const AGENT_SESSION_REWIND_RUNTIME_CAPABILITY = 'agent-session.rewind.v1'
 export const AGENT_SESSION_TURN_ITEM_CAPABILITY = 'agent-session.turn-item.v1' as const
 export const AGENT_SESSION_BACKGROUND_TASK_STOP_CAPABILITY =
   'agent-session.background-task-stop.v1' as const
+// Why: agentSession.cancel has a strict schema, so clients must not send prompt identity to an
+// older host that would reject the whole cancellation instead of falling back to turn stop.
 export const AGENT_SESSION_PROMPT_CANCEL_RUNTIME_CAPABILITY =
   'agent-session.prompt-cancel.v1' as const
+// Why: the host now publishes rows for work that is live inside a turn, and such
+// a row carries `stoppable: false` because no targeted stop can reach it. A
+// reader that predates the field draws a per-row Stop on every row it is given,
+// so it must be told apart from one that honours the field — and NOT by the
+// stop capability above, which a client can advertise while predating this.
 export const AGENT_SESSION_BACKGROUND_TASK_ROW_STOP_CAPABILITY =
   'agent-session.background-task-row-stop.v1' as const
 // Why: adding kimi to RESUMABLE_TUI_AGENTS grows terminal.ensureAgentSession's enum, and an
