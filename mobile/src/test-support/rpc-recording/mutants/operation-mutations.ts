@@ -1,15 +1,10 @@
+import type { OperationMutation } from '../operation-module-loader'
+
 /**
  * One in-memory source edit per adapter family. Each anchor names a real expression in a mounted
  * operation; the recording that owns the family must change visible state when it is applied, which
  * is what proves that family's `state()` projection observes the operation's actual output.
  */
-export type OperationMutation = {
-  /** Suffix of the mounted source file the anchor belongs to. */
-  file: string
-  before: string
-  after: string
-}
-
 export const OPERATION_MUTATIONS = {
   // Loses the generation comparison, so a stale workspace response poisons the search cache.
   race: {
@@ -41,8 +36,8 @@ export const OPERATION_MUTATIONS = {
   // Reads the overrides one level above the settings envelope.
   'bot-overrides-envelope': {
     file: 'settings-read-operations.ts',
-    before: "settings == null ? undefined : Reflect.get(Object(settings), 'prBotAuthorOverrides')",
-    after: "raw == null ? undefined : Reflect.get(Object(raw), 'prBotAuthorOverrides')"
+    before: "settings == null ? undefined : settingsField(settings, 'prBotAuthorOverrides')",
+    after: "raw == null ? undefined : settingsField(raw, 'prBotAuthorOverrides')"
   },
   // Publishes the settings envelope instead of the accepted operation value.
   'workspace-context-envelope': {
@@ -124,17 +119,11 @@ export const OPERATION_MUTATIONS = {
     before: 'latestRuntimeTaskSettings = (settingsResult.value ?? {}) as RuntimeTaskSettings',
     after: 'latestRuntimeTaskSettings = (settingsReply.result ?? {}) as RuntimeTaskSettings'
   }
-} as const satisfies Record<string, OperationMutation>
+} as const satisfies Record<string, Omit<OperationMutation, 'name'>>
 
 export type Mutation = keyof typeof OPERATION_MUTATIONS
 
-/**
- * Appended to a mounted module after transpile, keyed by file suffix. An adapter drives a real
- * operation the product keeps module-private; exposing it here beats editing the pinned source.
- */
-export const OPERATION_EXPOSURES: readonly (readonly [string, string])[] = [
-  [
-    'MobileAgentSessionHistoryPanel.tsx',
-    '\nexports.loadMobileResumeMetadata = loadMobileResumeMetadata;'
-  ]
-]
+/** The spec the loader applies, carrying the name only so a half-applied anchor can report it. */
+export function operationMutation(name: Mutation): OperationMutation {
+  return { name, ...OPERATION_MUTATIONS[name] }
+}
